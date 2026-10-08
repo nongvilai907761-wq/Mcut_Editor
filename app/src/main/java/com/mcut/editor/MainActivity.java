@@ -71,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnSaveVideo.setOnClickListener(v -> Toast.makeText(this, "กำลังเรนเดอร์วิดีโอ...", Toast.LENGTH_SHORT).show());
-        btnSettings.setOnClickListener(v -> Toast.makeText(this, "C++ Engine Status: " + videoProcessor.stringFromJNI(), Toast.LENGTH_LONG).show());
+        
+        // ป้องกันการเด้งจาก C++ JNI ชั่วคราว
+        btnSettings.setOnClickListener(v -> Toast.makeText(this, "ระบบการตั้งค่าพร้อมใช้งาน", Toast.LENGTH_SHORT).show());
     }
 }
