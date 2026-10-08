@@ -22,16 +22,13 @@ public class ImageConverter {
 
     /**
      * แปลง Bitmap ให้เป็นไฟล์วิดีโอชั่วคราวความยาว 3 วินาที
-     * @param bitmap รูปภาพต้นฉบับ
-     * @param outputDir โฟลเดอร์สำหรับเก็บไฟล์วิดีโอชั่วคราว
-     * @return พาธ (Path) ของไฟล์วิดีโอที่สร้างขึ้น
      */
     public static String convertImageToVideo(Bitmap bitmap, File outputDir) throws IOException {
         File outputFile = new File(outputDir, "img_vid_" + System.currentTimeMillis() + ".mp4");
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
 
-        // ปรับความขนาดให้หาร 16 ลงตัว (ข้อกำหนดของ MediaCodec ส่วนใหญ่)
+        // ปรับความละเอียดให้หาร 16 ลงตัว (ข้อกำหนดของ MediaCodec)
         width = (width + 15) & ~15;
         height = (height + 15) & ~15;
         Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
@@ -47,13 +44,13 @@ public class ImageConverter {
         Surface surface = codec.createInputSurface();
         codec.start();
 
-        MediaMuxer muxer = new MediaMuxer(outputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_FORMAT_MPEG_4);
+        // ใช้ 0 แทนค่าคงที่เพื่อความเข้ากันได้ทุกเวอร์ชันของ Android (0 = MUXER_OUTPUT_FORMAT_MPEG_4)
+        MediaMuxer muxer = new MediaMuxer(outputFile.getAbsolutePath(), 0);
         int videoTrackIndex = -1;
         boolean muxerStarted = false;
 
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         int totalFrames = (FRAME_RATE * VIDEO_DURATION_MS) / 1000; // 90 เฟรม สำหรับ 3 วินาที
-        long frameIntervalUs = 1000000L / FRAME_RATE;
 
         for (int i = 0; i < totalFrames; i++) {
             // 1. วาด Bitmap ลงบน Surface ของ Encoder
@@ -68,8 +65,8 @@ public class ImageConverter {
             // 2. ดึงข้อมูลที่เข้ารหัสแล้วออกจาก Codec
             drainEncoder(codec, muxer, bufferInfo, false, videoTrackIndex, muxerStarted);
             if (!muxerStarted) {
-                // รอจนกว่าจะได้ Format จาก Encoder มาเริ่ม Muxer
-                MediaFormat newFormat = codec.outputFormat;
+                // แก้ไขเป็น getOutputFormat() ตามมาตรฐาน Java/Android
+                MediaFormat newFormat = codec.getOutputFormat();
                 videoTrackIndex = muxer.addTrack(newFormat);
                 muxer.start();
                 muxerStarted = true;
