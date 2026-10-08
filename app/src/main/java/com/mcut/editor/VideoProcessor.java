@@ -1,29 +1,42 @@
 package com.mcut.editor;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
+
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VideoProcessor {
     private static final String TAG = "VideoProcessor";
     private final Context context;
     private final Handler handler;
 
-    // โหลด C++ Library ที่เชื่อมต่อกันอย่างถูกต้อง
+    // โหลด C++ Library ที่เชื่อมต่อกันอย่างถูกต้องตามโค้ดเดิม
     static {
         System.loadLibrary("video_engine_pro");
     }
 
-    // ประกาศ Native Method ให้ตรงกับ C++ ด้านล่าง
+    // ประกาศ Native Method ให้ตรงกับ C++ ด้านล่างตามโค้ดเดิม
     public native String stringFromJNI();
 
     public interface AiCallback {
         void onSuccess(String result);
+        void onError(String error);
+    }
+
+    // Callback สำหรับการประมวลผลคิววิดีโอและรูปภาพ
+    public interface ProcessCallback {
+        void onProgress(String message);
+        void onSuccess(List<String> processedVideoPaths);
         void onError(String error);
     }
 
@@ -32,7 +45,48 @@ public class VideoProcessor {
         this.handler = new Handler(Looper.getMainLooper());
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอกแบบอะซิงโครนัส
+    /**
+     * ฟังก์ชันสำหรับจัดการรายการมีเดียทั้งหมด (รองรับทั้ง Video และ Image)
+     * โดยจะแปลงรูปภาพเป็นวิดีโอ 3 วินาทีอัตโนมัติผ่าน ImageConverter
+     */
+    public void processMediaItems(List<MediaItem> items, List<Bitmap> bitmaps, ProcessCallback callback) {
+        new Thread(() -> {
+            try {
+                List<String> finalVideoPaths = new ArrayList<>();
+                File cacheDir = context.getCacheDir();
+                int bitmapIndex = 0;
+
+                for (int i = 0; i < items.size(); i++) {
+                    MediaItem item = items.get(i);
+                    String mediaType = item.getMediaType();
+
+                    if ("image".equalsIgnoreCase(mediaType)) {
+                        handler.post(() -> callback.onProgress("กำลังแปลงรูปภาพเป็นวิดีโอ (รายการที่ " + (i + 1) + ")..."));
+                        
+                        if (bitmaps != null && bitmapIndex < bitmaps.size()) {
+                            Bitmap bmp = bitmaps.get(bitmapIndex++);
+                            if (bmp != null) {
+                                // เรียกใช้งาน ImageConverter ที่เราแยกไฟล์ไว้เพื่อความสะอาดของโค้ด
+                                String convertedVideoPath = ImageConverter.convertImageToVideo(bmp, cacheDir);
+                                finalVideoPaths.add(convertedVideoPath);
+                            }
+                        }
+                    } else if ("video".equalsIgnoreCase(mediaType)) {
+                        handler.post(() -> callback.onProgress("กำลังเตรียมไฟล์วิดีโอ (รายการที่ " + (i + 1) + ")..."));
+                        finalVideoPaths.add(item.getFilePath());
+                    }
+                }
+
+                handler.post(() -> callback.onSuccess(finalVideoPaths));
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing media items", e);
+                handler.post(() -> callback.onError(e.getMessage()));
+            }
+        }).start();
+    }
+
+    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอกแบบอะซิงโครนัส (คงไว้ตามโค้ดเดิมของคุณทุกประการ)
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
             try {
