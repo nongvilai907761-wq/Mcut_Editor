@@ -20,14 +20,6 @@ public class VideoProcessor {
     private final Context context;
     private final Handler handler;
 
-    // โหลด C++ Library ที่เชื่อมต่อกันอย่างถูกต้องตามโค้ดเดิม
-    static {
-        System.loadLibrary("video_engine_pro");
-    }
-
-    // ประกาศ Native Method ให้ตรงกับ C++ ด้านล่างตามโค้ดเดิม
-    public native String stringFromJNI();
-
     public interface AiCallback {
         void onSuccess(String result);
         void onError(String error);
@@ -89,7 +81,7 @@ public class VideoProcessor {
         }).start();
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอกแบบอะซิงโครนัส (คงไว้ตามโค้ดเดิมของคุณทุกประการ)
+    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอกแบบอะซิงโครนัส
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
             try {
