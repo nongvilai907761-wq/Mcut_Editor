@@ -57,11 +57,14 @@ public class VideoProcessor {
                 int bitmapIndex = 0;
 
                 for (int i = 0; i < items.size(); i++) {
+                    // กำหนดค่าเป็น final เพื่อให้สามารถเรียกใช้งานภายใน Lambda Expression ได้อย่างถูกต้อง
+                    final int currentIndex = i;
+                    
                     MediaItem item = items.get(i);
                     String mediaType = item.getMediaType();
 
                     if ("image".equalsIgnoreCase(mediaType)) {
-                        handler.post(() -> callback.onProgress("กำลังแปลงรูปภาพเป็นวิดีโอ (รายการที่ " + (i + 1) + ")..."));
+                        handler.post(() -> callback.onProgress("กำลังแปลงรูปภาพเป็นวิดีโอ (รายการที่ " + (currentIndex + 1) + ")..."));
                         
                         if (bitmaps != null && bitmapIndex < bitmaps.size()) {
                             Bitmap bmp = bitmaps.get(bitmapIndex++);
@@ -72,7 +75,7 @@ public class VideoProcessor {
                             }
                         }
                     } else if ("video".equalsIgnoreCase(mediaType)) {
-                        handler.post(() -> callback.onProgress("กำลังเตรียมไฟล์วิดีโอ (รายการที่ " + (i + 1) + ")..."));
+                        handler.post(() -> callback.onProgress("กำลังเตรียมไฟล์วิดีโอ (รายการที่ " + (currentIndex + 1) + ")..."));
                         finalVideoPaths.add(item.getFilePath());
                     }
                 }
