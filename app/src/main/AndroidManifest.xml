@@ -12,21 +12,22 @@
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
         android:largeHeap="true">
 
-        <!-- หน้าแรกสำหรับตรวจสอบและกรอก API key -->
+        <!-- หน้าแรกสำหรับตรวจสอบและกรอก API key (ล็อกเป็นแนวตั้ง) -->
         <activity
             android:name=".ApiKeyActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- หน้าจอหลักตัดต่อวิดีโอ -->
+        <!-- หน้าจอหลักตัดต่อวิดีโอ (ล็อกเป็นแนวตั้งเรียบร้อยแล้ว) -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
-            android:screenOrientation="landscape" />
+            android:screenOrientation="portrait" />
 
     </application>
 
