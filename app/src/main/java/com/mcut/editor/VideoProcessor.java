@@ -78,12 +78,12 @@ public class VideoProcessor {
         }).start();
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอก (อัปเดตเป็น v1 และแก้ Error 404 เรียบร้อย)
+    // ฟังก์ชันเชื่อมต่อ Gemini AI API (เปลี่ยนมาใช้โมเดล gemini-pro ที่เสถียรและไม่ติด 404)
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
             try {
-                // เปลี่ยนเป็น Endpoint v1 เพื่อให้เชื่อมต่อได้สำเร็จและไม่เกิด Error 404
-                URL url = new URL("https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + apiKey);
+                // ใช้โมเดล gemini-pro ที่รองรับการเชื่อมต่อผ่าน API Key โดยตรง
+                URL url = new URL("https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + apiKey);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
