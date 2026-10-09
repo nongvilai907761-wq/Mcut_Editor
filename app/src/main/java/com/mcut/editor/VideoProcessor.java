@@ -70,19 +70,18 @@ public class VideoProcessor {
         }).start();
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI พร้อมระบบรายงานจุดที่ Error อย่างละเอียด
+    // ฟังก์ชันเชื่อมต่อ Gemini AI API (อัปเดตโมเดลเป็น gemini-3.8-flash เพื่อแก้ปัญหา 404 Not Found)
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
             HttpURLConnection conn = null;
             try {
-                // ตรวจสอบเบื้องต้นว่าใส่ API Key มาหรือยัง
                 if (apiKey == null || apiKey.trim().isEmpty()) {
                     handler.post(() -> callback.onError("Error: ยังไม่ได้บันทึก API Key ในหน้า Settings"));
                     return;
                 }
 
-                // URL Endpoint มาตรฐานที่รองรับ Gemini API
-                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey);
+                // เปลี่ยนมาใช้โมเดลรุ่นปัจจุบัน gemini-3.8-flash
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -99,7 +98,6 @@ public class VideoProcessor {
                 int code = conn.getResponseCode();
                 
                 if (code == 200) {
-                    // กรณีสำเร็จ: อ่านผลลัพธ์ JSON
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
                         StringBuilder response = new StringBuilder();
                         String responseLine;
@@ -110,7 +108,6 @@ public class VideoProcessor {
                         handler.post(() -> callback.onSuccess(aiMessage));
                     }
                 } else {
-                    // กรณีเกิด Error จากเซิร์ฟเวอร์: อ่านข้อความรายละเอียดข้างใน (Error Stream) ออกมาดูชัดๆ
                     StringBuilder errorResponse = new StringBuilder();
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"))) {
                         String line;
@@ -125,7 +122,6 @@ public class VideoProcessor {
                 }
 
             } catch (Exception e) {
-                // กรณีเกิด Error ฝั่งโค้ดหรืออินเทอร์เน็ต (เช่น Network หลุด, URL ผิดพลาด)
                 String codeLocationError = "Network/Code Error [callGeminiApi]: " + e.getMessage();
                 Log.e(TAG, codeLocationError, e);
                 handler.post(() -> callback.onError(codeLocationError));
