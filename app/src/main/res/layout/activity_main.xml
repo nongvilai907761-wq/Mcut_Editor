@@ -1,90 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="24dp"
     android:background="#FAFAFA">
 
-    <LinearLayout
+    <!-- หัวข้อหน้าจอ -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mcut Editor Dashboard"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#222222"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- ช่องกรอก Prompt สำหรับคุยกับ Gemini AI (ตั้งค่าสีตัวหนังสือเป็นสีดำชัดเจน) -->
+    <EditText
+        android:id="@+id/promptEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:minHeight="48dp"
+        android:hint="พิมพ์คำสั่งหรือ Prompt ที่นี่..."
+        android:textColor="#000000"
+        android:textColorHint="#888888"
+        android:inputType="text"
+        android:background="@android:drawable/editbox_background_normal"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Mcut Editor Dashboard"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="#333333"
-            android:layout_marginBottom="12dp"/>
+    <!-- ปุ่มเพิ่มรูปภาพ -->
+    <Button
+        android:id="@+id/btnImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="IMAGE"
+        android:layout_marginBottom="12dp"/>
 
-        <EditText
-            android:id="@+id/promptEditText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:hint="Type AI prompt here..."
-            android:background="@android:drawable/editbox_background_normal"
-            android:padding="12dp"
-            android:layout_marginBottom="16dp"/>
+    <!-- ปุ่มเพิ่มวิดีโอ -->
+    <Button
+        android:id="@+id/btnVideo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="VIDEO"
+        android:layout_marginBottom="12dp"/>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="16dp">
+    <!-- ปุ่มเพิ่มเสียง -->
+    <Button
+        android:id="@+id/btnAudio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="AUDIO"
+        android:layout_marginBottom="12dp"/>
 
-            <Button
-                android:id="@+id/btnImage"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="Image"/>
+    <!-- ปุ่มส่งคำสั่งหา Gemini AI -->
+    <Button
+        android:id="@+id/btnAiGenerate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="GENERATE AI"
+        android:layout_marginBottom="12dp"/>
 
-            <Button
-                android:id="@+id/btnVideo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="2dp"
-                android:layout_marginEnd="2dp"
-                android:text="Video"/>
+    <!-- ปุ่มบันทึกวิดีโอ -->
+    <Button
+        android:id="@+id/btnSaveVideo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="SAVE VIDEO"
+        android:layout_marginBottom="12dp"/>
 
-            <Button
-                android:id="@+id/btnAudio"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="Audio"/>
-        </LinearLayout>
+    <!-- ปุ่มตั้งค่า -->
+    <Button
+        android:id="@+id/btnSettings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="SETTINGS"/>
 
-        <Button
-            android:id="@+id/btnAiGenerate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Generate AI"
-            android:layout_marginBottom="12dp"/>
-
-        <Button
-            android:id="@+id/btnSaveVideo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Save Video"
-            android:layout_marginBottom="12dp"/>
-
-        <Button
-            android:id="@+id/btnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="Settings"/>
-
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>
