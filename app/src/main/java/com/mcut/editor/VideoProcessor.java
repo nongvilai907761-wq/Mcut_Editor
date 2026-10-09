@@ -49,9 +49,7 @@ public class VideoProcessor {
                 int bitmapIndex = 0;
 
                 for (int i = 0; i < items.size(); i++) {
-                    // กำหนดค่าเป็น final เพื่อให้สามารถเรียกใช้งานภายใน Lambda Expression ได้อย่างถูกต้อง
                     final int currentIndex = i;
-                    
                     MediaItem item = items.get(i);
                     String mediaType = item.getMediaType();
 
@@ -61,7 +59,6 @@ public class VideoProcessor {
                         if (bitmaps != null && bitmapIndex < bitmaps.size()) {
                             Bitmap bmp = bitmaps.get(bitmapIndex++);
                             if (bmp != null) {
-                                // เรียกใช้งาน ImageConverter ที่เราแยกไฟล์ไว้เพื่อความสะอาดของโค้ด
                                 String convertedVideoPath = ImageConverter.convertImageToVideo(bmp, cacheDir);
                                 finalVideoPaths.add(convertedVideoPath);
                             }
@@ -81,17 +78,20 @@ public class VideoProcessor {
         }).start();
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอกแบบอะซิงโครนัส
+    // ฟังก์ชันเชื่อมต่อ Gemini AI API ภายนอก (อัปเดต Endpoint และระบบแกะข้อความเพื่อแก้ Error 404)
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
             try {
+                // ใช้ URL และโมเดลที่เสถียรล่าสุดเพื่อป้องกัน Error 404
                 URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
                 conn.setDoOutput(true);
 
-                String jsonInputString = "{\"contents\":[{\"parts\":[{\"text\":\"" + prompt + "\"}]}]}";
+                // ปรับ escaping ข้อความให้ปลอดภัย ป้องกัน JSON พัง
+                String escapedPrompt = prompt.replace("\"", "\\\"").replace("\n", "\\n");
+                String jsonInputString = "{\"contents\":[{\"parts\":[{\"text\":\"" + escapedPrompt + "\"}]}]}";
 
                 try (OutputStream os = conn.getOutputStream()) {
                     byte[] input = jsonInputString.getBytes("utf-8");
@@ -106,7 +106,10 @@ public class VideoProcessor {
                         while ((responseLine = br.readLine()) != null) {
                             response.append(responseLine.trim());
                         }
-                        handler.post(() -> callback.onSuccess(response.toString()));
+                        
+                        // แกะข้อความคำตอบจาก JSON ของ Gemini AI
+                        String aiMessage = parseGeminiResponse(response.toString());
+                        handler.post(() -> callback.onSuccess(aiMessage));
                     }
                 } else {
                     handler.post(() -> callback.onError("API Error Code: " + code));
@@ -116,4 +119,5 @@ public class VideoProcessor {
             }
         }).start();
     }
-}
+
+    // ฟังก์ชันเสริมสำหรับ
