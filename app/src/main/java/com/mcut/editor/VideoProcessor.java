@@ -70,64 +70,87 @@ public class VideoProcessor {
         }).start();
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI API (อัปเดตโมเดลเป็น gemini-3.8-flash เพื่อแก้ปัญหา 404 Not Found)
+    // ฟังก์ชันเชื่อมต่อ Gemini AI API พร้อมระบบพยายามเชื่อมต่อซ้ำอัตโนมัติ (Retry mechanism) ป้องกัน Error 503
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
-            HttpURLConnection conn = null;
-            try {
-                if (apiKey == null || apiKey.trim().isEmpty()) {
-                    handler.post(() -> callback.onError("Error: ยังไม่ได้บันทึก API Key ในหน้า Settings"));
-                    return;
-                }
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                handler.post(() -> callback.onError("Error: ยังไม่ได้บันทึก API Key ในหน้า Settings"));
+                return;
+            }
 
-                // เปลี่ยนมาใช้โมเดลรุ่นปัจจุบัน gemini-3.8-flash
-                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json; utf-8");
-                conn.setDoOutput(true);
+            int maxRetries = 3;
+            int attempt = 0;
+            boolean success = false;
 
-                String escapedPrompt = prompt.replace("\"", "\\\"").replace("\n", "\\n");
-                String jsonInputString = "{\"contents\":[{\"parts\":[{\"text\":\"" + escapedPrompt + "\"}]}]}";
+            while (attempt < maxRetries && !success) {
+                attempt++;
+                HttpURLConnection conn = null;
+                try {
+                    // ใช้โมเดล gemini-1.5-flash มาตรฐานที่เสถียรที่สุด
+                    URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json; utf-8");
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(15000);
 
-                try (OutputStream os = conn.getOutputStream()) {
-                    byte[] input = jsonInputString.getBytes("utf-8");
-                    os.write(input, 0, input.length);
-                }
+                    String escapedPrompt = prompt.replace("\"", "\\\"").replace("\n", "\\n");
+                    String jsonInputString = "{\"contents\":[{\"parts\":[{\"text\":\"" + escapedPrompt + "\"}]}]}";
 
-                int code = conn.getResponseCode();
-                
-                if (code == 200) {
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
-                        StringBuilder response = new StringBuilder();
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response.append(responseLine.trim());
-                        }
-                        String aiMessage = parseGeminiResponse(response.toString());
-                        handler.post(() -> callback.onSuccess(aiMessage));
+                    try (OutputStream os = conn.getOutputStream()) {
+                        byte[] input = jsonInputString.getBytes("utf-8");
+                        os.write(input, 0, input.length);
                     }
-                } else {
-                    StringBuilder errorResponse = new StringBuilder();
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"))) {
-                        String line;
-                        while ((line = br.readLine()) != null) {
-                            errorResponse.append(line.trim());
+
+                    int code = conn.getResponseCode();
+
+                    if (code == 200) {
+                        success = true;
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
+                            StringBuilder response = new StringBuilder();
+                            String responseLine;
+                            while ((responseLine = br.readLine()) != null) {
+                                response.append(responseLine.trim());
+                            }
+                            String aiMessage = parseGeminiResponse(response.toString());
+                            handler.post(() -> callback.onSuccess(aiMessage));
                         }
-                    } catch (Exception ignored) {}
+                    } else {
+                        StringBuilder errorResponse = new StringBuilder();
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"))) {
+                            String line;
+                            while ((line = br.readLine()) != null) {
+                                errorResponse.append(line.trim());
+                            }
+                        } catch (Exception ignored) {}
 
-                    String detailedError = "API Error Code: " + code + "\nรายละเอียด: " + errorResponse.toString();
-                    Log.e(TAG, detailedError);
-                    handler.post(() -> callback.onError(detailedError));
-                }
+                        String detailedError = "API Error Code: " + code + "\nรายละเอียด: " + errorResponse.toString();
+                        
+                        // ถ้าเจอ Error 503 และยังไม่เกินโควตาการลองใหม่ ให้รอ 1 วินาทีแล้วลองยิงซ้ำ
+                        if (code == 503 && attempt < maxRetries) {
+                            Thread.sleep(1000);
+                            continue;
+                        }
 
-            } catch (Exception e) {
-                String codeLocationError = "Network/Code Error [callGeminiApi]: " + e.getMessage();
-                Log.e(TAG, codeLocationError, e);
-                handler.post(() -> callback.onError(codeLocationError));
-            } finally {
-                if (conn != null) {
-                    conn.disconnect();
+                        if (attempt >= maxRetries || code != 503) {
+                            Log.e(TAG, detailedError);
+                            handler.post(() -> callback.onError(detailedError));
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    if (attempt >= maxRetries) {
+                        String codeLocationError = "Network/Code Error [callGeminiApi]: " + e.getMessage();
+                        Log.e(TAG, codeLocationError, e);
+                        handler.post(() -> callback.onError(codeLocationError));
+                    } else {
+                        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                    }
+                } finally {
+                    if (conn != null) {
+                        conn.disconnect();
+                    }
                 }
             }
         }).start();
