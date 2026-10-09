@@ -25,7 +25,6 @@ public class VideoProcessor {
         void onError(String error);
     }
 
-    // Callback สำหรับการประมวลผลคิววิดีโอและรูปภาพ
     public interface ProcessCallback {
         void onProgress(String message);
         void onSuccess(List<String> processedVideoPaths);
@@ -37,10 +36,6 @@ public class VideoProcessor {
         this.handler = new Handler(Looper.getMainLooper());
     }
 
-    /**
-     * ฟังก์ชันสำหรับจัดการรายการมีเดียทั้งหมด (รองรับทั้ง Video และ Image)
-     * โดยจะแปลงรูปภาพเป็นวิดีโอ 3 วินาทีอัตโนมัติผ่าน ImageConverter
-     */
     public void processMediaItems(List<MediaItem> items, List<Bitmap> bitmaps, ProcessCallback callback) {
         new Thread(() -> {
             try {
@@ -55,7 +50,6 @@ public class VideoProcessor {
 
                     if ("image".equalsIgnoreCase(mediaType)) {
                         handler.post(() -> callback.onProgress("กำลังแปลงรูปภาพเป็นวิดีโอ (รายการที่ " + (currentIndex + 1) + ")..."));
-                        
                         if (bitmaps != null && bitmapIndex < bitmaps.size()) {
                             Bitmap bmp = bitmaps.get(bitmapIndex++);
                             if (bmp != null) {
@@ -68,23 +62,28 @@ public class VideoProcessor {
                         finalVideoPaths.add(item.getFilePath());
                     }
                 }
-
                 handler.post(() -> callback.onSuccess(finalVideoPaths));
-
             } catch (Exception e) {
                 Log.e(TAG, "Error processing media items", e);
-                handler.post(() -> callback.onError(e.getMessage()));
+                handler.post(() -> callback.onError("ProcessMedia Error: " + e.getMessage()));
             }
         }).start();
     }
 
-    // ฟังก์ชันเชื่อมต่อ Gemini AI API (เปลี่ยนมาใช้โมเดล gemini-pro ที่เสถียรและไม่ติด 404)
+    // ฟังก์ชันเชื่อมต่อ Gemini AI พร้อมระบบรายงานจุดที่ Error อย่างละเอียด
     public void callGeminiApi(String apiKey, String prompt, AiCallback callback) {
         new Thread(() -> {
+            HttpURLConnection conn = null;
             try {
-                // ใช้โมเดล gemini-pro ที่รองรับการเชื่อมต่อผ่าน API Key โดยตรง
-                URL url = new URL("https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + apiKey);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                // ตรวจสอบเบื้องต้นว่าใส่ API Key มาหรือยัง
+                if (apiKey == null || apiKey.trim().isEmpty()) {
+                    handler.post(() -> callback.onError("Error: ยังไม่ได้บันทึก API Key ในหน้า Settings"));
+                    return;
+                }
+
+                // URL Endpoint มาตรฐานที่รองรับ Gemini API
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey);
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
                 conn.setDoOutput(true);
@@ -98,27 +97,46 @@ public class VideoProcessor {
                 }
 
                 int code = conn.getResponseCode();
+                
                 if (code == 200) {
+                    // กรณีสำเร็จ: อ่านผลลัพธ์ JSON
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
                         StringBuilder response = new StringBuilder();
                         String responseLine;
                         while ((responseLine = br.readLine()) != null) {
                             response.append(responseLine.trim());
                         }
-                        
                         String aiMessage = parseGeminiResponse(response.toString());
                         handler.post(() -> callback.onSuccess(aiMessage));
                     }
                 } else {
-                    handler.post(() -> callback.onError("API Error Code: " + code));
+                    // กรณีเกิด Error จากเซิร์ฟเวอร์: อ่านข้อความรายละเอียดข้างใน (Error Stream) ออกมาดูชัดๆ
+                    StringBuilder errorResponse = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"))) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            errorResponse.append(line.trim());
+                        }
+                    } catch (Exception ignored) {}
+
+                    String detailedError = "API Error Code: " + code + "\nรายละเอียด: " + errorResponse.toString();
+                    Log.e(TAG, detailedError);
+                    handler.post(() -> callback.onError(detailedError));
                 }
+
             } catch (Exception e) {
-                handler.post(() -> callback.onError(e.getMessage()));
+                // กรณีเกิด Error ฝั่งโค้ดหรืออินเทอร์เน็ต (เช่น Network หลุด, URL ผิดพลาด)
+                String codeLocationError = "Network/Code Error [callGeminiApi]: " + e.getMessage();
+                Log.e(TAG, codeLocationError, e);
+                handler.post(() -> callback.onError(codeLocationError));
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         }).start();
     }
 
-    // ฟังก์ชันเสริมสำหรับแกะข้อความคำตอบจากโครงสร้าง JSON ของ Gemini
     private String parseGeminiResponse(String jsonResponse) {
         try {
             if (jsonResponse.contains("\"text\":")) {
