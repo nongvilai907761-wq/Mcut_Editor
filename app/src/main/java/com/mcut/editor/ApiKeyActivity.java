@@ -17,6 +17,7 @@ public class ApiKeyActivity extends AppCompatActivity {
     private EditText editApiKey;
     private Button btnSaveKey;
 
+    // ชื่อไฟล์สำหรับเก็บการตั้งค่า
     private static final String PREF_NAME = "McutPrefs";
 
     // เปลี่ยนจาก Gemini API Key เป็น OpenAI API Key
@@ -32,13 +33,15 @@ public class ApiKeyActivity extends AppCompatActivity {
         editApiKey = findViewById(R.id.editApiKey);
         btnSaveKey = findViewById(R.id.btnSaveKey);
 
-        // อ่านข้อมูลที่บันทึกไว้
+        // โหลดการตั้งค่าที่บันทึกไว้
         SharedPreferences prefs =
                 getSharedPreferences(PREF_NAME, MODE_PRIVATE);
 
-        // ตรวจสอบว่าเข้าหน้านี้เพื่อแก้ไข API Key หรือไม่
-        boolean editMode =
-                getIntent().getBooleanExtra("edit_key", false);
+        // ตรวจสอบว่าเปิดหน้านี้จากปุ่ม SETTINGS หรือไม่
+        boolean editMode = getIntent().getBooleanExtra(
+                "edit_key",
+                false
+        );
 
         // โหลด OpenAI API Key ที่เคยบันทึกไว้
         String savedKey = prefs.getString(KEY_API, "");
@@ -47,18 +50,18 @@ public class ApiKeyActivity extends AppCompatActivity {
             savedKey = "";
         }
 
-        // ถ้ามีคีย์อยู่แล้ว ให้แสดงคีย์เดิมในช่องกรอก
+        // หากมีคีย์เดิม ให้แสดงในช่องกรอก
         if (!savedKey.isEmpty()) {
             editApiKey.setText(savedKey);
 
-            // ถ้าไม่ได้เข้ามาเพื่อแก้ไข ให้กลับหน้าหลัก
+            // หากไม่ได้เข้ามาเพื่อแก้ไข ให้เปิดหน้าหลัก
             if (!editMode) {
                 navigateToMain();
                 return;
             }
         }
 
-        // ปุ่มบันทึก API Key
+        // ปุ่มบันทึก OpenAI API Key
         btnSaveKey.setOnClickListener(v -> {
 
             String key = editApiKey
@@ -66,7 +69,7 @@ public class ApiKeyActivity extends AppCompatActivity {
                     .toString()
                     .trim();
 
-            // ตรวจสอบว่าผู้ใช้กรอกคีย์หรือยัง
+            // ตรวจสอบช่องว่าง
             if (key.isEmpty()) {
                 Toast.makeText(
                         ApiKeyActivity.this,
@@ -85,7 +88,7 @@ public class ApiKeyActivity extends AppCompatActivity {
             if (!saved) {
                 Toast.makeText(
                         ApiKeyActivity.this,
-                        "บันทึก API Key ไม่สำเร็จ",
+                        "บันทึก OpenAI API Key ไม่สำเร็จ",
                         Toast.LENGTH_LONG
                 ).show();
 
@@ -111,7 +114,6 @@ public class ApiKeyActivity extends AppCompatActivity {
                     MainActivity.class
             );
 
-            // ล้างหน้า API Key ออกจากลำดับหน้าที่เปิดอยู่
             intent.addFlags(
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             );
