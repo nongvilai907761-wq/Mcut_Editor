@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -15,9 +17,9 @@
         android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="#222222"
-        android:layout_marginBottom="24dp"/>
+        android:layout_marginBottom="24dp" />
 
-    <!-- ช่องกรอก Prompt สำหรับคุยกับ Gemini AI (ตั้งค่าสีตัวหนังสือเป็นสีดำชัดเจน) -->
+    <!-- ช่องกรอก Prompt -->
     <EditText
         android:id="@+id/promptEditText"
         android:layout_width="match_parent"
@@ -29,7 +31,7 @@
         android:inputType="text"
         android:background="@android:drawable/editbox_background_normal"
         android:padding="12dp"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="16dp" />
 
     <!-- ปุ่มเพิ่มรูปภาพ -->
     <Button
@@ -38,7 +40,7 @@
         android:layout_height="wrap_content"
         android:minHeight="48dp"
         android:text="IMAGE"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp" />
 
     <!-- ปุ่มเพิ่มวิดีโอ -->
     <Button
@@ -47,7 +49,7 @@
         android:layout_height="wrap_content"
         android:minHeight="48dp"
         android:text="VIDEO"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp" />
 
     <!-- ปุ่มเพิ่มเสียง -->
     <Button
@@ -56,16 +58,16 @@
         android:layout_height="wrap_content"
         android:minHeight="48dp"
         android:text="AUDIO"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp" />
 
-    <!-- ปุ่มส่งคำสั่งหา Gemini AI -->
+    <!-- ปุ่มส่งคำสั่ง AI -->
     <Button
         android:id="@+id/btnAiGenerate"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="48dp"
         android:text="GENERATE AI"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp" />
 
     <!-- ปุ่มบันทึกวิดีโอ -->
     <Button
@@ -74,7 +76,7 @@
         android:layout_height="wrap_content"
         android:minHeight="48dp"
         android:text="SAVE VIDEO"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp" />
 
     <!-- ปุ่มตั้งค่า -->
     <Button
@@ -82,6 +84,26 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="48dp"
-        android:text="SETTINGS"/>
+        android:text="SETTINGS" />
+
+    <!-- รายการรูปภาพ วิดีโอ และเสียงที่เลือก -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="รายการสื่อที่เลือก"
+        android:textColor="#222222"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp" />
+
+    <!-- เพิ่ม ID ที่ MainActivity.java ต้องการ -->
+    <ListView
+        android:id="@+id/mediaListView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:choiceMode="none"
+        android:dividerHeight="1dp" />
 
 </LinearLayout>
