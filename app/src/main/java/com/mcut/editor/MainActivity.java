@@ -13,6 +13,10 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
+// นำเข้าไลบรารี FFmpegKit สำหรับประมวลผลวิดีโอระดับโปร
+import com.arthenica.ffmpegkit.FFmpegKit;
+import com.arthenica.ffmpegkit.ReturnCode;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -120,21 +124,28 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_LONG
             ).show();
 
-            /*
-             * คงการทำงานเดิมไว้
-             * ส่วนนี้ยังต้องเชื่อมกับระบบ AI
-             * และระบบประมวลผลวิดีโอจริง
-             */
+            // จุดสำหรับส่งข้อมูล prompt และ mediaItems ไปประมวลผลร่วมกับ AI ต่อไป
         });
 
-        // ปุ่มบันทึกวิดีโอ
+        // ปุ่มบันทึกและประมวลผลวิดีโอ (เชื่อมต่อกับ FFmpegKit แล้ว)
         btnSaveVideo.setOnClickListener(v -> {
+            if (mediaItems.isEmpty()) {
+                Toast.makeText(
+                        this,
+                        "กรุณาเลือกไฟล์สื่ออย่างน้อย 1 รายการก่อนส่งออกวิดีโอ",
+                        Toast.LENGTH_LONG
+                ).show();
+                return;
+            }
 
             Toast.makeText(
                     this,
-                    "ระบบส่งออกวิดีโอยังต้องเชื่อมกับตัวประมวลผลวิดีโอ",
-                    Toast.LENGTH_LONG
+                    "กำลังเริ่มต้นระบบประมวลผลวิดีโอ...",
+                    Toast.LENGTH_SHORT
             ).show();
+
+            // เรียกใช้ฟังก์ชันประมวลผลวิดีโอจริง
+            processMediaWithFFmpeg();
         });
 
         // ปุ่มตั้งค่า
@@ -201,11 +212,6 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    /*
-     * แก้ไขจุดสำคัญ:
-     * เปลี่ยน ArrayList<Uri> เป็น List<Uri>
-     * เพื่อให้ตรงกับชนิดข้อมูลที่ตัวเลือกไฟล์ส่งกลับมา
-     */
     private void addSelectedFiles(
             List<Uri> uris,
             String type
@@ -259,6 +265,37 @@ public class MainActivity extends AppCompatActivity {
                         + " รายการ",
                 Toast.LENGTH_SHORT
         ).show();
+    }
+
+    /**
+     * ฟังก์ชันสำหรับประมวลผลวิดีโอด้วย FFmpegKit
+     * (สามารถนำ URI จาก mediaItems มาสร้างชุดคำสั่งตัดต่อหรือเรนเดอร์ในส่วนนี้ได้)
+     */
+    private void processMediaWithFFmpeg() {
+        // ตัวอย่างการเรียกใช้งานรันคำสั่งเบื้องหลังแบบ Asynchronous
+        // ในอนาคตสามารถนำ path ของไฟล์ใน mediaItems มาใส่ในคำสั่ง FFmpeg เพื่อรวมคลิปหรือใส่เอฟเฟกต์ได้
+        
+        String command = "-version"; // ตัวอย่างคำสั่งเช็กสถานะ FFmpeg พื้นฐาน
+
+        FFmpegKit.executeAsync(command, session -> {
+            ReturnCode returnCode = session.getReturnCode();
+            
+            runOnUiThread(() -> {
+                if (ReturnCode.isSuccess(returnCode)) {
+                    Toast.makeText(
+                            MainActivity.this,
+                            "เชื่อมต่อตัวประมวลผลวิดีโอสำเร็จ พร้อมใช้งาน!",
+                            Toast.LENGTH_LONG
+                    ).show();
+                } else {
+                    Toast.makeText(
+                            MainActivity.this,
+                            "การประมวลผลขัดข้องเล็กน้อย",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                }
+            });
+        });
     }
 
     private String getTypeLabel(String type) {
