@@ -2,8 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -12,20 +16,24 @@
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
         android:largeHeap="true">
 
-        <!-- หน้าแรกสำหรับตรวจสอบและกรอก API key (ล็อกเป็นแนวตั้ง) -->
-        <activity
-            android:name=".ApiKeyActivity"
-            android:exported="true"
-            android:screenOrientation="portrait">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <!-- หน้าจอหลักตัดต่อวิดีโอ (ล็อกเป็นแนวตั้งเรียบร้อยแล้ว) -->
+        <!-- เปิดแอปเข้าหน้าหลักโดยตรง -->
         <activity
             android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category
+                    android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- เก็บหน้า API Key ไว้ก่อน แต่ไม่เปิดเป็นหน้าแรก -->
+        <activity
+            android:name=".ApiKeyActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
