@@ -13,8 +13,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-// นำเข้าไลบรารี AndroidX Media3 สำหรับประมวลผลวิดีโอ
-import androidx.media3.common.MediaItem;
+// นำเข้าไลบรารี AndroidX Media3 สำหรับประมวลผลวิดีโอ (ใช้นามแฝงเพื่อไม่ให้ชื่อซ้ำกัน)
 import androidx.media3.transformer.Composition;
 import androidx.media3.transformer.EditedMediaItem;
 import androidx.media3.transformer.ExportException;
@@ -38,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ListView mediaListView;
 
+    // ใช้คลาส MediaItem ของโปรเจกต์เราเอง
     private final ArrayList<com.mcut.editor.MediaItem> mediaItems =
             new ArrayList<>();
 
@@ -263,7 +263,6 @@ public class MainActivity extends AppCompatActivity {
      */
     private void processVideoWithMedia3() {
         try {
-            // ค้นหาไฟล์วิดีโอแรกจากรายการที่ผู้ใช้เลือกมาเป็นตัวอย่างในการประมวลผล
             String inputUriString = null;
             for (com.mcut.editor.MediaItem item : mediaItems) {
                 if ("video".equals(item.getType())) {
@@ -283,25 +282,24 @@ public class MainActivity extends AppCompatActivity {
                 outputFile.delete();
             }
 
-            // สร้าง Transformer สำหรับแปลงหรือเรนเดอร์วิดีโอ
+            // สร้าง Transformer พร้อมกำหนด Listener แบบถูกต้องตามเวอร์ชัน Media3
             Transformer transformer = new Transformer.Builder(this)
                     .addListener(new Transformer.Listener() {
                         @Override
-                        public void onCompleted(Transformer transformer, Composition composition, ExportResult exportResult) {
-                            runOnUiThread(() -> Toast.makeText(MainActivity.this, "บันทึกวิดีโอสำเร็จที่: " + outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show());
+                        public void onCompleted(Composition composition, ExportResult exportResult) {
+                            runOnUiThread(() -> Toast.makeText(MainActivity.this, "บันทึกวิดีโอสำเร็จ!", Toast.LENGTH_LONG).show());
                         }
 
                         @Override
-                        public void onError(Transformer transformer, Composition composition, ExportResult exportResult, ExportException exportException) {
+                        public void onError(Composition composition, ExportResult exportResult, ExportException exportException) {
                             runOnUiThread(() -> Toast.makeText(MainActivity.this, "เกิดข้อผิดพลาด: " + exportException.getMessage(), Toast.LENGTH_LONG).show());
                         }
                     })
                     .build();
 
-            MediaItem mediaItem = MediaItem.fromUri(inputUri);
+            androidx.media3.common.MediaItem mediaItem = androidx.media3.common.MediaItem.fromUri(inputUri);
             EditedMediaItem editedMediaItem = new EditedMediaItem.Builder(mediaItem).build();
 
-            // เริ่มกระบวนการแปลงไฟล์วิดีโอ
             transformer.start(editedMediaItem, outputFile.getAbsolutePath());
 
         } catch (Exception e) {
