@@ -13,10 +13,15 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-// นำเข้าไลบรารี FFmpegKit สำหรับประมวลผลวิดีโอระดับโปร
-import com.arthenica.ffmpegkit.FFmpegKit;
-import com.arthenica.ffmpegkit.ReturnCode;
+// นำเข้าไลบรารี AndroidX Media3 สำหรับประมวลผลวิดีโอ
+import androidx.media3.common.MediaItem;
+import androidx.media3.transformer.Composition;
+import androidx.media3.transformer.EditedMediaItem;
+import androidx.media3.transformer.ExportException;
+import androidx.media3.transformer.ExportResult;
+import androidx.media3.transformer.Transformer;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ListView mediaListView;
 
-    private final ArrayList<MediaItem> mediaItems =
+    private final ArrayList<com.mcut.editor.MediaItem> mediaItems =
             new ArrayList<>();
 
     private final ArrayList<String> mediaNames =
@@ -123,11 +128,9 @@ public class MainActivity extends AppCompatActivity {
                             + " รายการ",
                     Toast.LENGTH_LONG
             ).show();
-
-            // จุดสำหรับส่งข้อมูล prompt และ mediaItems ไปประมวลผลร่วมกับ AI ต่อไป
         });
 
-        // ปุ่มบันทึกและประมวลผลวิดีโอ (เชื่อมต่อกับ FFmpegKit แล้ว)
+        // ปุ่มบันทึกและประมวลผลวิดีโอด้วย Media3 Transformer
         btnSaveVideo.setOnClickListener(v -> {
             if (mediaItems.isEmpty()) {
                 Toast.makeText(
@@ -140,12 +143,11 @@ public class MainActivity extends AppCompatActivity {
 
             Toast.makeText(
                     this,
-                    "กำลังเริ่มต้นระบบประมวลผลวิดีโอ...",
+                    "กำลังเริ่มต้นเรนเดอร์วิดีโอด้วย Media3...",
                     Toast.LENGTH_SHORT
             ).show();
 
-            // เรียกใช้ฟังก์ชันประมวลผลวิดีโอจริง
-            processMediaWithFFmpeg();
+            processVideoWithMedia3();
         });
 
         // ปุ่มตั้งค่า
@@ -186,26 +188,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void registerFilePickers() {
-
-        // ตัวเลือกหลายรูปภาพ
         imagePicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "image")
         );
 
-        // ตัวเลือกหลายวิดีโอ
         videoPicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "video")
         );
 
-        // ตัวเลือกหลายไฟล์เสียง
         audioPicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "audio")
         );
 
-        // ตัวเลือกสื่อทั่วไป
         allMediaPicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "media")
@@ -216,32 +213,26 @@ public class MainActivity extends AppCompatActivity {
             List<Uri> uris,
             String type
     ) {
-
         if (uris == null || uris.isEmpty()) {
             return;
         }
 
         for (Uri uri : uris) {
-
             if (uri == null) {
                 continue;
             }
 
-            // เก็บสิทธิ์อ่านไฟล์ไว้เมื่อ Android อนุญาต
             try {
                 getContentResolver()
                         .takePersistableUriPermission(
                                 uri,
                                 Intent.FLAG_GRANT_READ_URI_PERMISSION
                         );
-
-            } catch (Exception ignored) {
-                // บาง URI อาจไม่รองรับการเก็บสิทธิ์ถาวร
-            }
+            } catch (Exception ignored) {}
 
             String name = getFileName(uri);
 
-            MediaItem item = new MediaItem(
+            com.mcut.editor.MediaItem item = new com.mcut.editor.MediaItem(
                     uri.toString(),
                     type,
                     0
@@ -268,68 +259,74 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * ฟังก์ชันสำหรับประมวลผลวิดีโอด้วย FFmpegKit
-     * (สามารถนำ URI จาก mediaItems มาสร้างชุดคำสั่งตัดต่อหรือเรนเดอร์ในส่วนนี้ได้)
+     * ฟังก์ชันประมวลผลวิดีโอโดยใช้ AndroidX Media3 Transformer
      */
-    private void processMediaWithFFmpeg() {
-        // ตัวอย่างการเรียกใช้งานรันคำสั่งเบื้องหลังแบบ Asynchronous
-        // ในอนาคตสามารถนำ path ของไฟล์ใน mediaItems มาใส่ในคำสั่ง FFmpeg เพื่อรวมคลิปหรือใส่เอฟเฟกต์ได้
-        
-        String command = "-version"; // ตัวอย่างคำสั่งเช็กสถานะ FFmpeg พื้นฐาน
-
-        FFmpegKit.executeAsync(command, session -> {
-            ReturnCode returnCode = session.getReturnCode();
-            
-            runOnUiThread(() -> {
-                if (ReturnCode.isSuccess(returnCode)) {
-                    Toast.makeText(
-                            MainActivity.this,
-                            "เชื่อมต่อตัวประมวลผลวิดีโอสำเร็จ พร้อมใช้งาน!",
-                            Toast.LENGTH_LONG
-                    ).show();
-                } else {
-                    Toast.makeText(
-                            MainActivity.this,
-                            "การประมวลผลขัดข้องเล็กน้อย",
-                            Toast.LENGTH_SHORT
-                    ).show();
+    private void processVideoWithMedia3() {
+        try {
+            // ค้นหาไฟล์วิดีโอแรกจากรายการที่ผู้ใช้เลือกมาเป็นตัวอย่างในการประมวลผล
+            String inputUriString = null;
+            for (com.mcut.editor.MediaItem item : mediaItems) {
+                if ("video".equals(item.getType())) {
+                    inputUriString = item.getUri();
+                    break;
                 }
-            });
-        });
+            }
+
+            if (inputUriString == null) {
+                Toast.makeText(this, "ไม่พบไฟล์วิดีโอสำหรับประมวลผล กรุณาเลือกไฟล์วิดีโอ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Uri inputUri = Uri.parse(inputUriString);
+            File outputFile = new File(getExternalFilesDir(null), "output_edited.mp4");
+            if (outputFile.exists()) {
+                outputFile.delete();
+            }
+
+            // สร้าง Transformer สำหรับแปลงหรือเรนเดอร์วิดีโอ
+            Transformer transformer = new Transformer.Builder(this)
+                    .addListener(new Transformer.Listener() {
+                        @Override
+                        public void onCompleted(Transformer transformer, Composition composition, ExportResult exportResult) {
+                            runOnUiThread(() -> Toast.makeText(MainActivity.this, "บันทึกวิดีโอสำเร็จที่: " + outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show());
+                        }
+
+                        @Override
+                        public void onError(Transformer transformer, Composition composition, ExportResult exportResult, ExportException exportException) {
+                            runOnUiThread(() -> Toast.makeText(MainActivity.this, "เกิดข้อผิดพลาด: " + exportException.getMessage(), Toast.LENGTH_LONG).show());
+                        }
+                    })
+                    .build();
+
+            MediaItem mediaItem = MediaItem.fromUri(inputUri);
+            EditedMediaItem editedMediaItem = new EditedMediaItem.Builder(mediaItem).build();
+
+            // เริ่มกระบวนการแปลงไฟล์วิดีโอ
+            transformer.start(editedMediaItem, outputFile.getAbsolutePath());
+
+        } catch (Exception e) {
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private String getTypeLabel(String type) {
-
         switch (type) {
-
-            case "image":
-                return "รูปภาพ";
-
-            case "video":
-                return "วิดีโอ";
-
-            case "audio":
-                return "เสียง";
-
-            default:
-                return "สื่อ";
+            case "image": return "รูปภาพ";
+            case "video": return "วิดีโอ";
+            case "audio": return "เสียง";
+            default: return "สื่อ";
         }
     }
 
     private String getFileName(Uri uri) {
-
         String name = uri.getLastPathSegment();
-
         if (name == null || name.isEmpty()) {
             return uri.toString();
         }
-
         int slash = name.lastIndexOf('/');
-
         if (slash >= 0 && slash < name.length() - 1) {
             name = name.substring(slash + 1);
         }
-
         return name;
     }
 }
