@@ -3,7 +3,6 @@ package com.mcut.editor;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -15,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -57,14 +57,6 @@ public class MainActivity extends AppCompatActivity {
         btnSaveVideo = findViewById(R.id.btnSaveVideo);
         btnSettings = findViewById(R.id.btnSettings);
 
-        /*
-         * ถ้า activity_main.xml มี ListView
-         * ที่ใช้ ID mediaListView จะสามารถแสดงรายการไฟล์ได้
-         *
-         * หาก XML ของคุณยังไม่มี ListView นี้
-         * ต้องเพิ่มส่วนหน้าจอก่อนใช้โค้ดนี้
-         */
-
         mediaListView = findViewById(R.id.mediaListView);
 
         mediaAdapter = new ArrayAdapter<>(
@@ -77,19 +69,24 @@ public class MainActivity extends AppCompatActivity {
 
         registerFilePickers();
 
+        // ปุ่มเลือกรูปภาพ
         btnImage.setOnClickListener(v -> {
             imagePicker.launch(new String[]{"image/*"});
         });
 
+        // ปุ่มเลือกวิดีโอ
         btnVideo.setOnClickListener(v -> {
             videoPicker.launch(new String[]{"video/*"});
         });
 
+        // ปุ่มเลือกเสียง
         btnAudio.setOnClickListener(v -> {
             audioPicker.launch(new String[]{"audio/*"});
         });
 
+        // ปุ่มส่งคำสั่ง AI
         btnAiGenerate.setOnClickListener(v -> {
+
             String prompt = promptEditText
                     .getText()
                     .toString()
@@ -101,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
                         "กรุณาพิมพ์คำสั่ง AI ก่อน",
                         Toast.LENGTH_SHORT
                 ).show();
+
                 return;
             }
 
@@ -110,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
                         "กรุณาเลือกรูปภาพ วิดีโอ หรือเสียงก่อน",
                         Toast.LENGTH_LONG
                 ).show();
+
                 return;
             }
 
@@ -122,12 +121,15 @@ public class MainActivity extends AppCompatActivity {
             ).show();
 
             /*
-             * ขั้นต่อไปต้องเชื่อม prompt และ mediaItems
-             * เข้ากับระบบ AI และระบบสร้างวิดีโอจริง
+             * คงการทำงานเดิมไว้
+             * ส่วนนี้ยังต้องเชื่อมกับระบบ AI
+             * และระบบประมวลผลวิดีโอจริง
              */
         });
 
+        // ปุ่มบันทึกวิดีโอ
         btnSaveVideo.setOnClickListener(v -> {
+
             Toast.makeText(
                     this,
                     "ระบบส่งออกวิดีโอยังต้องเชื่อมกับตัวประมวลผลวิดีโอ",
@@ -135,7 +137,9 @@ public class MainActivity extends AppCompatActivity {
             ).show();
         });
 
+        // ปุ่มตั้งค่า
         btnSettings.setOnClickListener(v -> {
+
             Intent intent = new Intent(
                     MainActivity.this,
                     ApiKeyActivity.class
@@ -146,9 +150,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        /*
-         * แตะรายการค้างไว้เพื่อลบออกจากรายการ
-         */
+        // แตะรายการค้างไว้เพื่อลบไฟล์ออก
         mediaListView.setOnItemLongClickListener(
                 (parent, view, position, id) -> {
 
@@ -174,31 +176,41 @@ public class MainActivity extends AppCompatActivity {
 
     private void registerFilePickers() {
 
+        // ตัวเลือกหลายรูปภาพ
         imagePicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "image")
         );
 
+        // ตัวเลือกหลายวิดีโอ
         videoPicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "video")
         );
 
+        // ตัวเลือกหลายไฟล์เสียง
         audioPicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "audio")
         );
 
+        // ตัวเลือกสื่อทั่วไป
         allMediaPicker = registerForActivityResult(
                 new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> addSelectedFiles(uris, "media")
         );
     }
 
+    /*
+     * แก้ไขจุดสำคัญ:
+     * เปลี่ยน ArrayList<Uri> เป็น List<Uri>
+     * เพื่อให้ตรงกับชนิดข้อมูลที่ตัวเลือกไฟล์ส่งกลับมา
+     */
     private void addSelectedFiles(
-            ArrayList<Uri> uris,
+            List<Uri> uris,
             String type
     ) {
+
         if (uris == null || uris.isEmpty()) {
             return;
         }
@@ -209,17 +221,14 @@ public class MainActivity extends AppCompatActivity {
                 continue;
             }
 
-            /*
-             * เก็บสิทธิ์อ่านไฟล์ไว้เท่าที่ Android อนุญาต
-             * เพื่อให้สามารถนำ URI ไปอ่านต่อภายหลังได้
-             */
-
+            // เก็บสิทธิ์อ่านไฟล์ไว้เมื่อ Android อนุญาต
             try {
                 getContentResolver()
                         .takePersistableUriPermission(
                                 uri,
                                 Intent.FLAG_GRANT_READ_URI_PERMISSION
                         );
+
             } catch (Exception ignored) {
                 // บาง URI อาจไม่รองรับการเก็บสิทธิ์ถาวร
             }
@@ -245,7 +254,9 @@ public class MainActivity extends AppCompatActivity {
 
         Toast.makeText(
                 this,
-                "เพิ่มไฟล์แล้ว " + uris.size() + " รายการ",
+                "เพิ่มไฟล์แล้ว "
+                        + uris.size()
+                        + " รายการ",
                 Toast.LENGTH_SHORT
         ).show();
     }
@@ -253,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
     private String getTypeLabel(String type) {
 
         switch (type) {
+
             case "image":
                 return "รูปภาพ";
 
