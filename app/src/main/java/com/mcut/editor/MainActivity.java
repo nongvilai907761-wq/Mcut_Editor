@@ -1,210 +1,286 @@
 package com.mcut.editor;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
-    private static final String PREF_NAME = "McutPrefs";
-    private static final String KEY_API = "openai_api_key";
-
     private EditText promptEditText;
-    private Button btnImage, btnVideo, btnAudio;
-    private Button btnAiGenerate, btnSaveVideo, btnSettings;
 
-    private VideoProcessor videoProcessor;
-    private String apiKey = "";
+    private Button btnImage;
+    private Button btnVideo;
+    private Button btnAudio;
+    private Button btnAiGenerate;
+    private Button btnSaveVideo;
+    private Button btnSettings;
 
-    private ArrayList<MediaItem> mediaTimeline = new ArrayList<>();
+    private ListView mediaListView;
+
+    private final ArrayList<MediaItem> mediaItems =
+            new ArrayList<>();
+
+    private final ArrayList<String> mediaNames =
+            new ArrayList<>();
+
+    private ArrayAdapter<String> mediaAdapter;
+
+    private ActivityResultLauncher<String[]> imagePicker;
+    private ActivityResultLauncher<String[]> videoPicker;
+    private ActivityResultLauncher<String[]> audioPicker;
+    private ActivityResultLauncher<String[]> allMediaPicker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        try {
-            setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main);
 
-            videoProcessor = new VideoProcessor(this);
+        promptEditText = findViewById(R.id.promptEditText);
 
-            loadApiKey();
+        btnImage = findViewById(R.id.btnImage);
+        btnVideo = findViewById(R.id.btnVideo);
+        btnAudio = findViewById(R.id.btnAudio);
+        btnAiGenerate = findViewById(R.id.btnAiGenerate);
+        btnSaveVideo = findViewById(R.id.btnSaveVideo);
+        btnSettings = findViewById(R.id.btnSettings);
 
-            promptEditText = findViewById(R.id.promptEditText);
-            btnImage = findViewById(R.id.btnImage);
-            btnVideo = findViewById(R.id.btnVideo);
-            btnAudio = findViewById(R.id.btnAudio);
-            btnAiGenerate = findViewById(R.id.btnAiGenerate);
-            btnSaveVideo = findViewById(R.id.btnSaveVideo);
-            btnSettings = findViewById(R.id.btnSettings);
+        /*
+         * ถ้า activity_main.xml มี ListView
+         * ที่ใช้ ID mediaListView จะสามารถแสดงรายการไฟล์ได้
+         *
+         * หาก XML ของคุณยังไม่มี ListView นี้
+         * ต้องเพิ่มส่วนหน้าจอก่อนใช้โค้ดนี้
+         */
 
-            btnImage.setOnClickListener(v -> {
-                mediaTimeline.add(
-                    new MediaItem("sample_image.png", "image", 3000)
-                );
+        mediaListView = findViewById(R.id.mediaListView);
 
-                Toast.makeText(
-                    this,
-                    "เพิ่มรูปภาพลงใน Timeline แล้ว",
-                    Toast.LENGTH_SHORT
-                ).show();
-            });
+        mediaAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                mediaNames
+        );
 
-            btnVideo.setOnClickListener(v -> {
-                mediaTimeline.add(
-                    new MediaItem("sample_video.mp4", "video", 5000)
-                );
+        mediaListView.setAdapter(mediaAdapter);
 
-                Toast.makeText(
-                    this,
-                    "เพิ่มวิดีโอลงใน Timeline แล้ว",
-                    Toast.LENGTH_SHORT
-                ).show();
-            });
+        registerFilePickers();
 
-            btnAudio.setOnClickListener(v -> {
-                mediaTimeline.add(
-                    new MediaItem("sample_audio.mp3", "audio", 5000)
-                );
+        btnImage.setOnClickListener(v -> {
+            imagePicker.launch(new String[]{"image/*"});
+        });
 
-                Toast.makeText(
-                    this,
-                    "เพิ่มเสียงลงใน Timeline แล้ว",
-                    Toast.LENGTH_SHORT
-                ).show();
-            });
+        btnVideo.setOnClickListener(v -> {
+            videoPicker.launch(new String[]{"video/*"});
+        });
 
-            btnAiGenerate.setOnClickListener(v -> {
+        btnAudio.setOnClickListener(v -> {
+            audioPicker.launch(new String[]{"audio/*"});
+        });
 
-                String prompt = promptEditText
+        btnAiGenerate.setOnClickListener(v -> {
+            String prompt = promptEditText
                     .getText()
                     .toString()
                     .trim();
 
-                if (prompt.isEmpty()) {
-                    Toast.makeText(
+            if (prompt.isEmpty()) {
+                Toast.makeText(
                         this,
-                        "กรุณาพิมพ์คำสั่ง Prompt ก่อน",
+                        "กรุณาพิมพ์คำสั่ง AI ก่อน",
                         Toast.LENGTH_SHORT
-                    ).show();
-                    return;
-                }
-
-                loadApiKey();
-
-                if (apiKey.isEmpty()) {
-                    Toast.makeText(
-                        this,
-                        "กรุณาใส่ OpenAI API Key ใน SETTINGS ก่อน",
-                        Toast.LENGTH_LONG
-                    ).show();
-
-                    openApiKeySettings();
-                    return;
-                }
-
-                Toast.makeText(
-                    this,
-                    "กำลังส่งคำสั่งไปยัง OpenAI...",
-                    Toast.LENGTH_SHORT
                 ).show();
+                return;
+            }
 
-                // คงชื่อเมธอดเดิมไว้ก่อน เพื่อให้เข้ากับ VideoProcessor
-                // ที่มีอยู่ในโปรเจกต์
-                videoProcessor.callGeminiApi(
-                    apiKey,
-                    prompt,
-                    new VideoProcessor.AiCallback() {
-
-                        @Override
-                        public void onSuccess(String result) {
-                            runOnUiThread(() ->
-                                Toast.makeText(
-                                    MainActivity.this,
-                                    "AI ตอบกลับสำเร็จ!",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            );
-                        }
-
-                        @Override
-                        public void onError(String error) {
-                            runOnUiThread(() ->
-                                Toast.makeText(
-                                    MainActivity.this,
-                                    "เกิดข้อผิดพลาด: " + error,
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            );
-                        }
-                    }
-                );
-            });
-
-            btnSaveVideo.setOnClickListener(v ->
+            if (mediaItems.isEmpty()) {
                 Toast.makeText(
+                        this,
+                        "กรุณาเลือกรูปภาพ วิดีโอ หรือเสียงก่อน",
+                        Toast.LENGTH_LONG
+                ).show();
+                return;
+            }
+
+            Toast.makeText(
                     this,
-                    "กำลังเรนเดอร์วิดีโอ...",
-                    Toast.LENGTH_SHORT
-                ).show()
+                    "รับคำสั่งแล้ว จำนวนไฟล์: "
+                            + mediaItems.size()
+                            + " รายการ",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            /*
+             * ขั้นต่อไปต้องเชื่อม prompt และ mediaItems
+             * เข้ากับระบบ AI และระบบสร้างวิดีโอจริง
+             */
+        });
+
+        btnSaveVideo.setOnClickListener(v -> {
+            Toast.makeText(
+                    this,
+                    "ระบบส่งออกวิดีโอยังต้องเชื่อมกับตัวประมวลผลวิดีโอ",
+                    Toast.LENGTH_LONG
+            ).show();
+        });
+
+        btnSettings.setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    ApiKeyActivity.class
             );
 
-            btnSettings.setOnClickListener(v -> openApiKeySettings());
+            intent.putExtra("edit_key", true);
 
-        } catch (Throwable e) {
-            StringWriter sw = new StringWriter();
-            e.printStackTrace(new PrintWriter(sw));
+            startActivity(intent);
+        });
 
-            String stackTraceString = sw.toString();
+        /*
+         * แตะรายการค้างไว้เพื่อลบออกจากรายการ
+         */
+        mediaListView.setOnItemLongClickListener(
+                (parent, view, position, id) -> {
 
-            Log.e(TAG, "CRASH DETAILS:\n" + stackTraceString);
+                    if (position >= 0
+                            && position < mediaItems.size()) {
 
-            showErrorDialog(stackTraceString);
+                        mediaItems.remove(position);
+                        mediaNames.remove(position);
+
+                        mediaAdapter.notifyDataSetChanged();
+
+                        Toast.makeText(
+                                this,
+                                "ลบรายการแล้ว",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+
+                    return true;
+                }
+        );
+    }
+
+    private void registerFilePickers() {
+
+        imagePicker = registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                uris -> addSelectedFiles(uris, "image")
+        );
+
+        videoPicker = registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                uris -> addSelectedFiles(uris, "video")
+        );
+
+        audioPicker = registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                uris -> addSelectedFiles(uris, "audio")
+        );
+
+        allMediaPicker = registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                uris -> addSelectedFiles(uris, "media")
+        );
+    }
+
+    private void addSelectedFiles(
+            ArrayList<Uri> uris,
+            String type
+    ) {
+        if (uris == null || uris.isEmpty()) {
+            return;
+        }
+
+        for (Uri uri : uris) {
+
+            if (uri == null) {
+                continue;
+            }
+
+            /*
+             * เก็บสิทธิ์อ่านไฟล์ไว้เท่าที่ Android อนุญาต
+             * เพื่อให้สามารถนำ URI ไปอ่านต่อภายหลังได้
+             */
+
+            try {
+                getContentResolver()
+                        .takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+            } catch (Exception ignored) {
+                // บาง URI อาจไม่รองรับการเก็บสิทธิ์ถาวร
+            }
+
+            String name = getFileName(uri);
+
+            MediaItem item = new MediaItem(
+                    uri.toString(),
+                    type,
+                    0
+            );
+
+            mediaItems.add(item);
+
+            mediaNames.add(
+                    getTypeLabel(type)
+                            + " : "
+                            + name
+            );
+        }
+
+        mediaAdapter.notifyDataSetChanged();
+
+        Toast.makeText(
+                this,
+                "เพิ่มไฟล์แล้ว " + uris.size() + " รายการ",
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
+    private String getTypeLabel(String type) {
+
+        switch (type) {
+            case "image":
+                return "รูปภาพ";
+
+            case "video":
+                return "วิดีโอ";
+
+            case "audio":
+                return "เสียง";
+
+            default:
+                return "สื่อ";
         }
     }
 
-    private void loadApiKey() {
-        SharedPreferences prefs =
-            getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+    private String getFileName(Uri uri) {
 
-        apiKey = prefs.getString(KEY_API, "");
-    }
+        String name = uri.getLastPathSegment();
 
-    private void openApiKeySettings() {
-        Intent intent = new Intent(
-            MainActivity.this,
-            ApiKeyActivity.class
-        );
+        if (name == null || name.isEmpty()) {
+            return uri.toString();
+        }
 
-        // บอกหน้าตั้งค่าว่าให้เปิดโหมดแก้ไขคีย์
-        intent.putExtra("edit_key", true);
+        int slash = name.lastIndexOf('/');
 
-        startActivity(intent);
-    }
+        if (slash >= 0 && slash < name.length() - 1) {
+            name = name.substring(slash + 1);
+        }
 
-    private void showErrorDialog(String errorText) {
-        runOnUiThread(() -> {
-            android.app.AlertDialog.Builder builder =
-                new android.app.AlertDialog.Builder(this);
-
-            builder.setTitle("แอปเกิดข้อผิดพลาด");
-            builder.setMessage(errorText);
-            builder.setPositiveButton(
-                "ปิด",
-                (dialog, which) -> dialog.dismiss()
-            );
-
-            builder.show();
-        });
+        return name;
     }
 }
