@@ -1,20 +1,32 @@
 package com.mcut.editor;
 
 public class MediaItem {
-    private String filePath;
-    private String mediaType;
-    private long durationMs;
+    private String uri;
+    private String type;
+    private int duration;
 
-    public MediaItem(String filePath, String mediaType, long durationMs) {
-        this.filePath = filePath;
-        this.mediaType = mediaType;
-        this.durationMs = durationMs;
+    // Constructor สำหรับรับค่าตอนสร้าง Object
+    public MediaItem(String uri, String type, int duration) {
+        this.uri = uri;
+        this.type = type;
+        this.duration = duration;
     }
 
-    public String getFilePath() { return filePath; }
-    public void setFilePath(String filePath) { this.filePath = filePath; }
-    public String getMediaType() { return mediaType; }
-    public void setMediaType(String mediaType) { this.mediaType = mediaType; }
-    public long getDurationMs() { return durationMs; }
-    public void setDurationMs(long durationMs) { this.durationMs = durationMs; }
+    // เมธอดดึง Uri ของไฟล์ (ที่ MainActivity ต้องใช้)
+    public String getUri() {
+        return uri;
+    }
+
+    // เมธอดดึงประเภทของไฟล์ เช่น "video", "image", "audio" (ที่ MainActivity ต้องใช้)
+    public String getType() {
+        return type;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
+    }
 }
